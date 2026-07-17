@@ -544,7 +544,7 @@
                 const now = new Date();
                 timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
                 
-                // 2. 第一階段：強制渲染基本畫面 (此時沒有人名，確保絕不會卡在計算中)
+                // 2. 第一階段：強制渲染基本畫面
                 renderDashboard();
                 
                 // 3. 第二階段：背景讀取名單
@@ -558,14 +558,14 @@
                         const targetRoles = [
                             '票亭', '驗票', '入口', '安一場控', '安二場控',
                             '瑪莎多拉1', '瑪莎多拉2', '一坪海岸線1', '一坪海岸線2',
-                            '統治者的祝福1', '統治者的祝福2', '補貨/機動'
+                            '統治者的祝福1', '統治者的祝福2'
                         ];
                         const lines = csvText.split('\n');
                         lines.forEach(line => {
                             targetRoles.forEach(role => {
                                 if (line.trim().startsWith(role)) {
-                                    let names = line.replace(role, '').trim();
-                                    names = names.replace(/@\S+/g, '').trim();
+                                    // 更強大的切字刀：直接切掉第一個 @ 之後的所有東西，並去除前後空白
+                                    let names = line.replace(role, '').split('@')[0].trim();
                                     
                                     let mapKey = role;
                                     if(role === '瑪莎多拉1') mapKey = '瑪莎多拉(1)';
@@ -573,8 +573,11 @@
                                     if(role === '一坪海岸線1') mapKey = '一坪海岸線(1)';
                                     if(role === '一坪海岸線2') mapKey = '一坪海岸線(2)';
                                     if(role === '統治者的祝福1') mapKey = '統治者的祝福(1)';
-                                    if(role === '統治者的祝福2') mapKey = '統治者的祝福(2)';
-                                    if(role === '補貨/機動') mapKey = '機動人員';
+                                    if(role === '統治者的祝福2') {
+                                        mapKey = '統治者的祝福(2)';
+                                        // 特別處理：因為機動人員就是統治者的祝福(2)，所以讓機動人員也對應這個名字
+                                        if (names) roleStaffMap['機動人員'] = names;
+                                    }
 
                                     if (names) roleStaffMap[mapKey] = names;
                                 }
@@ -585,7 +588,6 @@
                         renderDashboard();
                     })
                     .catch(err => {
-                        // 即使抓不到資料 (CORS被擋、斷線)，也不影響已渲染好的基本版
                         console.warn("名單讀取失敗，維持無人名模式", err);
                     });
             } catch (err) {
@@ -593,7 +595,6 @@
             }
         }
 
-        // 使用最穩定的 DOM 準備就緒事件取代 window.onload
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initApp);
         } else {
