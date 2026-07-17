@@ -14,7 +14,6 @@
             --text-main: #e0e0e0;
             --text-muted: #888888;
             --accent: #bb86fc;
-            --past-opacity: 1; /* 保持亮度 */
         }
 
         body {
@@ -26,7 +25,6 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* 預留底部空間給狀態列 */
             padding-bottom: 80px; 
             min-height: 100vh;
         }
@@ -109,7 +107,6 @@
             transition: all 0.2s;
         }
         
-        /* 自動同步狀態下的 [現] 按鈕 */
         #btnNow.sync-active {
             background-color: var(--accent);
             color: #000;
@@ -126,7 +123,7 @@
             flex-direction: column;
             gap: 20px;
             flex-grow: 1;
-            justify-content: center; /* 垂直置中 */
+            justify-content: center;
         }
 
         .event-card {
@@ -163,10 +160,7 @@
             text-transform: uppercase;
         }
 
-        /* 過去事件 (待確認) 樣式 */
-        .event-card.past {
-            border-left-color: #ffb74d; /* 橘黃色 */
-        }
+        .event-card.past { border-left-color: #ffb74d; }
         .past .time-col { color: #ffb74d; }
         .past .status-badge { 
             background-color: rgba(255, 183, 77, 0.2); 
@@ -174,10 +168,7 @@
             border: 1px solid rgba(255, 183, 77, 0.5);
         }
 
-        /* 未來事件 (即將到來) 樣式 */
-        .event-card.future {
-            border-left-color: #03dac6;
-        }
+        .event-card.future { border-left-color: #03dac6; }
         .future .time-col { color: #03dac6; }
         .future .status-badge { 
             background-color: rgba(3, 218, 198, 0.2); 
@@ -213,7 +204,7 @@
         .badge-front { background-color: #82b1ff; }
         .badge-control { background-color: #ffb74d; }
         .badge-station { background-color: #69f0ae; }
-        .badge-actor { background-color: #e1bee7; } /* 演員專屬顏色 */
+        .badge-actor { background-color: #e1bee7; }
 
         /* --- 底部狀態列 --- */
         .bottom-status-bar {
@@ -235,11 +226,7 @@
             box-shadow: 0 -4px 10px rgba(0,0,0,0.5);
         }
 
-        .status-row {
-            display: flex;
-            align-items: flex-start;
-        }
-
+        .status-row { display: flex; align-items: flex-start; }
         .status-label {
             font-weight: bold;
             color: var(--text-muted);
@@ -248,14 +235,12 @@
             display: flex;
             align-items: center;
         }
-
         .status-content {
             flex-grow: 1;
             display: flex;
             flex-wrap: wrap;
             gap: 5px;
         }
-
         .status-item {
             background: #333;
             padding: 2px 8px;
@@ -263,14 +248,10 @@
             font-size: 0.85rem;
             color: #ddd;
         }
-        
         .status-item.highlight {
             border: 1px solid var(--accent);
             color: var(--accent);
         }
-
-        /* 隱藏原生推播UI */
-        .notification-bar { display: none; }
     </style>
 </head>
 <body>
@@ -290,31 +271,25 @@
         <!-- 內容由 JavaScript 動態生成 -->
     </div>
 
-    <!-- 底部固定狀態列 -->
     <div class="bottom-status-bar" id="bottomStatusBar">
         <div class="status-row">
             <div class="status-label">🛌 休息中</div>
             <div class="status-content" id="restingList">
-                <span class="status-item">計算中...</span>
+                <span class="status-item">系統初始化中...</span>
             </div>
         </div>
         <div class="status-row">
             <div class="status-label">🏃 機動</div>
             <div class="status-content" id="roverStatus">
-                <span class="status-item">計算中...</span>
+                <span class="status-item">系統初始化中...</span>
             </div>
         </div>
     </div>
 
     <script>
-        // !!! 請將下方網址替換為您的 Google Sheets "發布為 CSV" 的連結 !!!
-        // 取得方式：檔案 -> 共用 -> 發布到網路 -> 選擇工作表 -> 選擇 CSV -> 發布
         const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCEzSFH4YvcE0I5WUlkSr7Hfn5-tVre5p5-GKWlblVYIIQkpHSFX6vc0Lc_jisVfGfnInry6-l789V/pub?output=csv';
-
-        // 儲存解析後的人員名單對應表
         let roleStaffMap = {};
 
-        // 完整的作息表資料
         const eventsData = [
             { time: '10:30', text: '票亭、驗票、入口：上班' },
             { time: '11:00', text: '安一場控、安二場控、瑪莎多拉(1)、瑪莎多拉(2)：上班' },
@@ -347,7 +322,6 @@
             { time: '19:30', text: '一坪海岸線(1)、一坪海岸線(2)、統治者的祝福(1)、統治者的祝福(2)：下班' }
         ];
 
-        // 各崗位休息時段資料 (用於計算底部狀態列)
         const breakSchedule = [
             { role: '票亭', self: ['11:30', '12:00'], rover: ['15:35', '16:05'] },
             { role: '驗票', self: ['11:30', '12:00'], rover: ['12:00', '12:30'] },
@@ -359,7 +333,7 @@
             { role: '一坪海岸線(1)', self: ['12:55', '13:25'], rover: ['17:05', '17:35'] },
             { role: '一坪海岸線(2)', self: ['12:55', '13:25'], rover: ['17:35', '18:05'] },
             { role: '統治者的祝福(1)', self: ['13:05', '13:35'], rover: ['13:35', '14:05'] },
-            { role: '統治者的祝福(2)', self: ['14:05', '15:05'], rover: null, isRover: true } // 大休
+            { role: '統治者的祝福(2)', self: ['14:05', '15:05'], rover: null, isRover: true }
         ];
 
         const timeInput = document.getElementById('timeSimulator');
@@ -371,9 +345,8 @@
 
         let notificationEnabled = false;
         let lastNotifiedTime = null;
-        let isAutoSync = true; // 預設開啟自動同步
+        let isAutoSync = true;
 
-        // --- 通知功能設定 ---
         if ("Notification" in window) {
             btnNotify.addEventListener('click', () => {
                 if (Notification.permission === "granted") {
@@ -404,142 +377,152 @@
             }
         }
 
-        // 幫文字上標籤顏色的函式
-        function colorizeRoles(text) {
-            let res = text;
-            const rovers = ['機動人員', '統治者的祝福\\(2\\)'];
-            const fronts = ['票亭', '驗票', '入口'];
-            const controls = ['安一場控', '安二場控'];
-            const stations = ['瑪莎多拉\\(1\\)', '瑪莎多拉\\(2\\)', '一坪海岸線\\(1\\)', '一坪海岸線\\(2\\)', '統治者的祝福\\(1\\)'];
-            const actors = ['A組演員', 'B組演員', '戀愛都市杜里亞斯'];
-
-            rovers.forEach(r => res = res.replace(new RegExp(r, 'g'), `<span class="badge badge-rover">$&</span>`));
-            fronts.forEach(r => res = res.replace(new RegExp(r, 'g'), `<span class="badge badge-front">$&</span>`));
-            controls.forEach(r => res = res.replace(new RegExp(r, 'g'), `<span class="badge badge-control">$&</span>`));
-            stations.forEach(r => res = res.replace(new RegExp(r, 'g'), `<span class="badge badge-station">$&</span>`));
-            actors.forEach(r => res = res.replace(new RegExp(r, 'g'), `<span class="badge badge-actor">$&</span>`));
-            
-            return res;
-        }
-
-        // 判斷某個時間 `t` 是否落在 `start` 和 `end` 之間 (左閉右開)
         function isTimeInRange(t, start, end) {
-            if (!start || !end) return false;
+            if (!t || !start || !end) return false;
             return t >= start && t < end;
         }
 
-        // 更新底部狀態列
         function updateBottomStatus(currentTime) {
-            let restingHtml = [];
-            let roverHtml = `<span class="status-item">在原崗位 (或未上班)</span>`;
+            try {
+                let restingHtml = [];
+                let roverHtml = `<span class="status-item">在原崗位 (或未上班)</span>`;
 
-            // 輔助函式：取得帶人名的職位名稱
-            const getDisplayName = (roleName) => {
-                return roleStaffMap[roleName] ? `${roleName}(${roleStaffMap[roleName]})` : roleName;
-            };
+                const getDisplayName = (roleName) => {
+                    return roleStaffMap[roleName] ? `${roleName}(${roleStaffMap[roleName]})` : roleName;
+                };
 
-            breakSchedule.forEach(sch => {
-                // 檢查自休/大休
-                if (isTimeInRange(currentTime, sch.self[0], sch.self[1])) {
-                    let type = sch.isRover ? "大休" : "自休";
-                    restingHtml.push(`<span class="status-item">${getDisplayName(sch.role)} (${type})</span>`);
+                breakSchedule.forEach(sch => {
+                    if (isTimeInRange(currentTime, sch.self[0], sch.self[1])) {
+                        let type = sch.isRover ? "大休" : "自休";
+                        restingHtml.push(`<span class="status-item">${getDisplayName(sch.role)} (${type})</span>`);
+                    }
+                    if (sch.rover && isTimeInRange(currentTime, sch.rover[0], sch.rover[1])) {
+                        restingHtml.push(`<span class="status-item">${getDisplayName(sch.role)} (輪休)</span>`);
+                        roverHtml = `<span class="status-item highlight">接替 ${getDisplayName(sch.role)}</span>`;
+                    }
+                });
+
+                if (isTimeInRange(currentTime, '14:05', '15:05')) {
+                    roverHtml = `<span class="status-item highlight">大休中</span>`;
                 }
-                
-                // 檢查輪休
-                if (sch.rover && isTimeInRange(currentTime, sch.rover[0], sch.rover[1])) {
-                    restingHtml.push(`<span class="status-item">${getDisplayName(sch.role)} (輪休)</span>`);
-                    roverHtml = `<span class="status-item highlight">接替 ${getDisplayName(sch.role)}</span>`;
-                }
-            });
 
-            if (isTimeInRange(currentTime, '14:05', '15:05')) {
-                roverHtml = `<span class="status-item highlight">大休中</span>`;
+                restingListEl.innerHTML = restingHtml.length > 0 ? restingHtml.join('') : '<span class="status-item" style="color:#777">無人休息</span>';
+                roverStatusEl.innerHTML = roverHtml;
+            } catch (err) {
+                console.error("更新底部狀態發生錯誤:", err);
+                restingListEl.innerHTML = '<span class="status-item">顯示錯誤</span>';
             }
-
-            restingListEl.innerHTML = restingHtml.length > 0 ? restingHtml.join('') : '<span class="status-item" style="color:#777">無人休息</span>';
-            roverStatusEl.innerHTML = roverHtml;
         }
 
-        // 渲染儀表板的函式
+        function colorizeRoles(text) {
+            try {
+                let res = text;
+                const rovers = ['機動人員', '統治者的祝福\\(2\\)'];
+                const fronts = ['票亭', '驗票', '入口'];
+                const controls = ['安一場控', '安二場控'];
+                const stations = ['瑪莎多拉\\(1\\)', '瑪莎多拉\\(2\\)', '一坪海岸線\\(1\\)', '一坪海岸線\\(2\\)', '統治者的祝福\\(1\\)'];
+                const actors = ['A組演員', 'B組演員', '戀愛都市杜里亞斯'];
+
+                const createBadge = (roleName, cssClass) => {
+                    const displayName = roleStaffMap[roleName] ? `${roleName}(${roleStaffMap[roleName]})` : roleName;
+                    return `<span class="badge ${cssClass}">${displayName}</span>`;
+                };
+
+                rovers.forEach(r => {
+                    const actualRoleName = r.replace(/\\/g, ''); 
+                    res = res.replace(new RegExp(r, 'g'), createBadge(actualRoleName, 'badge-rover'));
+                });
+                fronts.forEach(r => res = res.replace(new RegExp(r, 'g'), createBadge(r, 'badge-front')));
+                controls.forEach(r => res = res.replace(new RegExp(r, 'g'), createBadge(r, 'badge-control')));
+                stations.forEach(r => {
+                    const actualRoleName = r.replace(/\\/g, '');
+                    res = res.replace(new RegExp(r, 'g'), createBadge(actualRoleName, 'badge-station'));
+                });
+                actors.forEach(r => res = res.replace(new RegExp(r, 'g'), `<span class="badge badge-actor">$&</span>`));
+                
+                return res;
+            } catch (err) {
+                console.error("標籤著色發生錯誤:", err);
+                return text; // 如果發生錯誤，至少回傳無顏色的純文字，確保畫面不空白
+            }
+        }
+
         function renderDashboard() {
-            const currentTime = timeInput.value;
-            eventContainer.innerHTML = '';
+            try {
+                const currentTime = timeInput.value || "12:00"; // 防呆：如果抓不到時間給預設值
+                eventContainer.innerHTML = '';
 
-            // 尋找未來第一個發生的事件索引
-            let nextIndex = eventsData.findIndex(e => e.time >= currentTime);
-            if (nextIndex === -1) nextIndex = eventsData.length;
+                let nextIndex = eventsData.findIndex(e => e.time >= currentTime);
+                if (nextIndex === -1) nextIndex = eventsData.length;
 
-            // 抓取過去剛發生的一件、未來即將發生的一件
-            const pastEvent = nextIndex > 0 ? eventsData[nextIndex - 1] : null;
-            const futureEvent = nextIndex < eventsData.length ? eventsData[nextIndex] : null;
+                const pastEvent = nextIndex > 0 ? eventsData[nextIndex - 1] : null;
+                const futureEvent = nextIndex < eventsData.length ? eventsData[nextIndex] : null;
 
-            // 渲染剛發生的事件 (橘色待確認)
-            if (pastEvent) {
-                const html = `
-                    <div class="event-card past">
-                        <div class="time-col">${pastEvent.time}</div>
-                        <div class="desc-col">
-                            <div class="status-badge">⚠️ 待確認 (CHECK)</div>
-                            <div>${colorizeRoles(pastEvent.text)}</div>
-                        </div>
-                    </div>`;
-                eventContainer.insertAdjacentHTML('beforeend', html);
+                if (pastEvent) {
+                    const html = `
+                        <div class="event-card past">
+                            <div class="time-col">${pastEvent.time}</div>
+                            <div class="desc-col">
+                                <div class="status-badge">⚠️ 待確認 (CHECK)</div>
+                                <div>${colorizeRoles(pastEvent.text)}</div>
+                            </div>
+                        </div>`;
+                    eventContainer.insertAdjacentHTML('beforeend', html);
+                }
+
+                eventContainer.insertAdjacentHTML('beforeend', `<div class="divider">當前時間 ${currentTime}</div>`);
+
+                if (futureEvent) {
+                    const html = `
+                        <div class="event-card future">
+                            <div class="time-col">${futureEvent.time}</div>
+                            <div class="desc-col">
+                                <div class="status-badge">即將到來 (NEXT)</div>
+                                <div>${colorizeRoles(futureEvent.text)}</div>
+                            </div>
+                        </div>`;
+                    eventContainer.insertAdjacentHTML('beforeend', html);
+                }
+                
+                if (!pastEvent && !futureEvent) {
+                     eventContainer.innerHTML = '<p style="text-align:center; color:#888;">查無行程資料</p>';
+                }
+
+                updateBottomStatus(currentTime);
+            } catch (err) {
+                console.error("渲染儀表板發生錯誤:", err);
+                eventContainer.innerHTML = `<p style="text-align:center; color:#ffb74d;">畫面載入錯誤，請重新整理</p>`;
             }
-
-            eventContainer.insertAdjacentHTML('beforeend', `<div class="divider">當前時間 ${currentTime}</div>`);
-
-            // 渲染即將到來的事件 (綠色)
-            if (futureEvent) {
-                const html = `
-                    <div class="event-card future">
-                        <div class="time-col">${futureEvent.time}</div>
-                        <div class="desc-col">
-                            <div class="status-badge">即將到來 (NEXT)</div>
-                            <div>${colorizeRoles(futureEvent.text)}</div>
-                        </div>
-                    </div>`;
-                eventContainer.insertAdjacentHTML('beforeend', html);
-            }
-            
-            if (!pastEvent && !futureEvent) {
-                 eventContainer.innerHTML = '<p style="text-align:center; color:#888;">查無行程資料</p>';
-            }
-
-            // 同步更新底部狀態列
-            updateBottomStatus(currentTime);
         }
 
-        // --- 自動同步與推播核心邏輯 ---
         setInterval(() => {
-            const now = new Date();
-            const actualTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            try {
+                const now = new Date();
+                const actualTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-            // 1. 自動同步時間
-            if (isAutoSync && timeInput.value !== actualTime) {
-                timeInput.value = actualTime;
-                renderDashboard();
-            }
+                if (isAutoSync && timeInput.value !== actualTime) {
+                    timeInput.value = actualTime;
+                    renderDashboard();
+                }
 
-            // 2. 推播通知
-            if (!notificationEnabled) return;
-            if (timeInput.value !== actualTime) return; // 沒同步時不推播
-            if (lastNotifiedTime === actualTime) return; // 這分鐘推過了
+                if (!notificationEnabled) return;
+                if (timeInput.value !== actualTime) return; 
+                if (lastNotifiedTime === actualTime) return; 
 
-            const eventNow = eventsData.find(e => e.time === actualTime);
-            if (eventNow) {
-                let plainText = eventNow.text.replace(/<br>/g, '\n').replace(/<[^>]*>?/gm, '');
-                
-                if (Notification.permission === "granted") {
+                const eventNow = eventsData.find(e => e.time === actualTime);
+                if (eventNow && "Notification" in window && Notification.permission === "granted") {
+                    let plainText = eventNow.text.replace(/<br>/g, '\n').replace(/<[^>]*>?/gm, '');
                     new Notification(`【場控提醒】${actualTime}`, {
                         body: plainText,
                         icon: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏰</text></svg>"
                     });
                     lastNotifiedTime = actualTime;
                 }
+            } catch (err) {
+                // 背景錯誤不中斷執行
             }
-        }, 1000); // 每秒檢查
+        }, 1000);
 
-        // --- 綁定事件 ---
         timeInput.addEventListener('input', () => {
             isAutoSync = false;
             btnNow.classList.remove('sync-active');
@@ -549,124 +532,73 @@
         btnNow.addEventListener('click', () => {
             isAutoSync = true;
             btnNow.classList.add('sync-active');
-            
             const now = new Date();
             timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
             renderDashboard();
         });
 
-        // --- 初始載入設定 ---
-        window.onload = () => {
-            const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            timeInput.value = `${hours}:${minutes}`;
-            
-            // 第一階段：立刻先用預設的職位名稱渲染儀表板，確保不會畫面空白
-            renderDashboard();
-            
-            // 第二階段：在背景嘗試載入名單，載入完成後再重新渲染一次加上人名
-            loadStaffList().then(() => {
-                // 成功抓取後，重新渲染畫面 (此時已有名字)
-                renderDashboard();
-            }).catch(err => {
-                // 就算發生網路錯誤、404、或是 CORS 被擋，儀表板依然已經在第一階段顯示了
-                console.error("載入人員名單失敗，維持使用預設職位名稱", err);
-            });
-        };
-
-        // 載入 Google Sheets CSV 資料
-        async function loadStaffList() {
-            if (!GOOGLE_SHEET_CSV_URL || GOOGLE_SHEET_CSV_URL.includes('您的發布ID')) {
-                console.warn("尚未設定有效的 Google Sheet CSV 網址");
-                return;
-            }
-
+        // 獨立出的安全啟動函數
+        function initApp() {
             try {
-                // 加入 credentials: 'omit' 與 cache: 'no-store' 降低在 Github Pages 上遇到的 CORS/Cache 問題機率
-                const response = await fetch(GOOGLE_SHEET_CSV_URL, { 
-                    method: 'GET',
-                    cache: 'no-store',
-                    credentials: 'omit' 
-                });
+                // 1. 設定時間
+                const now = new Date();
+                timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const csvText = await response.text();
+                // 2. 第一階段：強制渲染基本畫面 (此時沒有人名，確保絕不會卡在計算中)
+                renderDashboard();
                 
-                parseStaffText(csvText);
-            } catch (error) {
-                // 將錯誤往上層丟，由上面的 .catch 去處理
-                throw error;
+                // 3. 第二階段：背景讀取名單
+                fetch(GOOGLE_SHEET_CSV_URL)
+                    .then(response => {
+                        if (!response.ok) throw new Error("網路請求失敗");
+                        return response.text();
+                    })
+                    .then(csvText => {
+                        // 解析文字
+                        const targetRoles = [
+                            '票亭', '驗票', '入口', '安一場控', '安二場控',
+                            '瑪莎多拉1', '瑪莎多拉2', '一坪海岸線1', '一坪海岸線2',
+                            '統治者的祝福1', '統治者的祝福2', '補貨/機動'
+                        ];
+                        const lines = csvText.split('\n');
+                        lines.forEach(line => {
+                            targetRoles.forEach(role => {
+                                if (line.trim().startsWith(role)) {
+                                    let names = line.replace(role, '').trim();
+                                    names = names.replace(/@\S+/g, '').trim();
+                                    
+                                    let mapKey = role;
+                                    if(role === '瑪莎多拉1') mapKey = '瑪莎多拉(1)';
+                                    if(role === '瑪莎多拉2') mapKey = '瑪莎多拉(2)';
+                                    if(role === '一坪海岸線1') mapKey = '一坪海岸線(1)';
+                                    if(role === '一坪海岸線2') mapKey = '一坪海岸線(2)';
+                                    if(role === '統治者的祝福1') mapKey = '統治者的祝福(1)';
+                                    if(role === '統治者的祝福2') mapKey = '統治者的祝福(2)';
+                                    if(role === '補貨/機動') mapKey = '機動人員';
+
+                                    if (names) roleStaffMap[mapKey] = names;
+                                }
+                            });
+                        });
+                        
+                        // 4. 解析完成後，重新渲染 (帶入人名)
+                        renderDashboard();
+                    })
+                    .catch(err => {
+                        // 即使抓不到資料 (CORS被擋、斷線)，也不影響已渲染好的基本版
+                        console.warn("名單讀取失敗，維持無人名模式", err);
+                    });
+            } catch (err) {
+                console.error("初始化嚴重錯誤:", err);
             }
         }
 
-        // 解析 A1 格式的純文字，提取職位與人名
-        function parseStaffText(text) {
-            // 定義我們要尋找的關鍵職位
-            const targetRoles = [
-                '票亭', '驗票', '入口', '安一場控', '安二場控',
-                '瑪莎多拉1', '瑪莎多拉2', '一坪海岸線1', '一坪海岸線2',
-                '統治者的祝福1', '統治者的祝福2', '補貨/機動'
-            ];
-
-            // 逐行解析
-            const lines = text.split('\n');
-            lines.forEach(line => {
-                targetRoles.forEach(role => {
-                    // 檢查這行是否以該職位開頭 (處理可能有的空格)
-                    if (line.trim().startsWith(role)) {
-                        // 移除職位名稱，剩下的就是人名與標籤
-                        let names = line.replace(role, '').trim();
-                        // 移除 @標籤 (如果不需要顯示 LINE ID，可以保留這行)
-                        names = names.replace(/@\S+/g, '').trim();
-                        
-                        // 存入對應表，處理一些名稱對齊問題
-                        let mapKey = role;
-                        if(role === '瑪莎多拉1') mapKey = '瑪莎多拉(1)';
-                        if(role === '瑪莎多拉2') mapKey = '瑪莎多拉(2)';
-                        if(role === '一坪海岸線1') mapKey = '一坪海岸線(1)';
-                        if(role === '一坪海岸線2') mapKey = '一坪海岸線(2)';
-                        if(role === '統治者的祝福1') mapKey = '統治者的祝福(1)';
-                        if(role === '統治者的祝福2') mapKey = '統治者的祝福(2)';
-                        if(role === '補貨/機動') mapKey = '機動人員';
-
-                        if (names) {
-                            roleStaffMap[mapKey] = names;
-                        }
-                    }
-                });
-            });
-            console.log("解析出的人員名單:", roleStaffMap);
+        // 使用最穩定的 DOM 準備就緒事件取代 window.onload
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
         }
-
-        // 幫文字上標籤顏色的函式 (修改：加入人名)
-        function colorizeRoles(text) {
-            let res = text;
-            const rovers = ['機動人員', '統治者的祝福\\(2\\)'];
-            const fronts = ['票亭', '驗票', '入口'];
-            const controls = ['安一場控', '安二場控'];
-            const stations = ['瑪莎多拉\\(1\\)', '瑪莎多拉\\(2\\)', '一坪海岸線\\(1\\)', '一坪海岸線\\(2\\)', '統治者的祝福\\(1\\)'];
-            const actors = ['A組演員', 'B組演員', '戀愛都市杜里亞斯'];
-
-            // 輔助函式：產生帶有人名的標籤 HTML
-            const createBadge = (roleName, cssClass) => {
-                const displayName = roleStaffMap[roleName] ? `${roleName}(${roleStaffMap[roleName]})` : roleName;
-                return `<span class="badge ${cssClass}">${displayName}</span>`;
-            };
-
-            rovers.forEach(r => {
-                const actualRoleName = r.replace(/\\/g, ''); // 移除 regex 用的斜線
-                res = res.replace(new RegExp(r, 'g'), createBadge(actualRoleName, 'badge-rover'));
-            });
-            fronts.forEach(r => res = res.replace(new RegExp(r, 'g'), createBadge(r, 'badge-front')));
-            controls.forEach(r => res = res.replace(new RegExp(r, 'g'), createBadge(r, 'badge-control')));
-            stations.forEach(r => {
-                const actualRoleName = r.replace(/\\/g, '');
-                res = res.replace(new RegExp(r, 'g'), createBadge(actualRoleName, 'badge-station'));
-            });
-            actors.forEach(r => res = res.replace(new RegExp(r, 'g'), `<span class="badge badge-actor">$&</span>`));
-            
-            return res;
-        }
+    </script>
+</body>
+</html>
