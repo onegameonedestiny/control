@@ -558,15 +558,20 @@
         // --- 初始載入設定 ---
         window.onload = () => {
             const now = new Date();
-            timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            timeInput.value = `${hours}:${minutes}`;
             
-            // 嘗試載入名單，載入完成後再渲染儀表板
+            // 第一階段：立刻先用預設的職位名稱渲染儀表板，確保不會畫面空白
+            renderDashboard();
+            
+            // 第二階段：在背景嘗試載入名單，載入完成後再重新渲染一次加上人名
             loadStaffList().then(() => {
+                // 成功抓取後，重新渲染畫面 (此時已有名字)
                 renderDashboard();
             }).catch(err => {
-                console.error("載入人員名單失敗，將使用預設職位名稱", err);
-                // 即使載入失敗也繼續渲染儀表板
-                renderDashboard();
+                // 就算發生網路錯誤、404、或是 CORS 被擋，儀表板依然已經在第一階段顯示了
+                console.error("載入人員名單失敗，維持使用預設職位名稱", err);
             });
         };
 
@@ -578,20 +583,22 @@
             }
 
             try {
-                const response = await fetch(GOOGLE_SHEET_CSV_URL);
-                if (!response.ok) throw new Error('Network response was not ok');
+                // 加入 credentials: 'omit' 與 cache: 'no-store' 降低在 Github Pages 上遇到的 CORS/Cache 問題機率
+                const response = await fetch(GOOGLE_SHEET_CSV_URL, { 
+                    method: 'GET',
+                    cache: 'no-store',
+                    credentials: 'omit' 
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const csvText = await response.text();
                 
-                // 簡單解析 CSV，抓取 A1 的內容。
-                // 注意：這裡假設名單文字沒有被雙引號包住且包含逗號。如果有，解析邏輯需要調整。
-                // 為了簡單起見，我們直接拿整份純文字來找。
                 parseStaffText(csvText);
-                
-                // 解析完畢後強制再渲染一次，確保人名顯示出來
-                renderDashboard();
             } catch (error) {
-                console.error('Error fetching staff list:', error);
-                // 可以選擇在這裡提醒使用者
+                // 將錯誤往上層丟，由上面的 .catch 去處理
+                throw error;
             }
         }
 
