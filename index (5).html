@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#121212">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>動態場控儀表板</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-muted: #888888;
+            --accent: #bb86fc;
+            --accent-hover: #9d5bfa;
+            --past-opacity: 0.55;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* 頂部固定控制列 */
+        header {
+            position: sticky;
+            top: 0;
+            background-color: rgba(18, 18, 18, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 15px 20px;
+            z-index: 100;
+            border-bottom: 1px solid #333;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            color: var(--accent);
+            font-size: 1.3rem;
+            margin: 0 0 15px 0;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* 新增：通知按鈕的樣式 */
+        .notification-bar {
+            background-color: #2c2c2c;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #444;
+        }
+
+        .notify-btn {
+            background-color: transparent;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .notify-btn.active {
+            background-color: var(--accent);
+            color: #000;
+        }
+
+        input[type="time"] {
+            flex: 1;
+            background-color: #2c2c2c;
+            color: white;
+            border: 1px solid #444;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 1.3rem;
+            text-align: center;
+            color-scheme: dark;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        button {
+            flex: 1;
+            background-color: var(--accent);
+            color: #000;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:active {
+            background-color: var(--accent-hover);
+            transform: scale(0.98);
+        }
+
+        /* 儀表板內容區 */
+        main {
+            padding: 20px;
+            flex-grow: 1;
+            padding-bottom: 120px; /* 增加底部留白，避免被狀態列遮蓋 */
+        }
+
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* 事件卡片 */
+        .event-card {
+            background-color: var(--panel-bg);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            border-left: 6px solid transparent;
+        }
+
+        .event-card.past {
+            /* 取消原本變暗的透明度，並將左側邊框改為橘黃色提醒色 */
+            border-left-color: #ffb74d; 
+            border: 1px solid rgba(255, 183, 77, 0.3);
+            border-left: 6px solid #ffb74d;
+        }
+
+        .event-card.future {
+            border-left-color: #03dac6;
+        }
+
+        .event-card.next {
+            border: 1px solid #03dac6;
+            border-left: 8px solid #03dac6;
+            box-shadow: 0 0 12px rgba(3, 218, 198, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+        }
+
+        .time-col {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--accent);
+            letter-spacing: 1px;
+        }
+
+        /* 過去時間改成醒目的橘黃色 */
+        .past .time-col { color: #ffb74d; }
+        .future .time-col { color: #03dac6; }
+
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        /* 過去狀態標籤改為橘黃色底 */
+        .past .status-badge { background-color: rgba(255, 183, 77, 0.15); color: #ffb74d; border: 1px solid #ffb74d; }
+        .future .status-badge { background-color: rgba(3, 218, 198, 0.15); color: #03dac6; }
+        .next .status-badge { background-color: #03dac6; color: #000; }
+
+        .desc-col {
+            font-size: 1.05rem;
+            line-height: 1.6;
+        }
+
+        /* 職位標籤顏色設定 (適應手機版換行) */
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin: 2px 2px 4px 0;
+            color: #000;
+            white-space: nowrap;
+        }
+
+        .badge-rover { background-color: #cf6679; color: white; }
+        .badge-front { background-color: #82b1ff; }
+        .badge-control { background-color: #ffb74d; }
+        .badge-station { background-color: #69f0ae; }
+        
+        .divider {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .divider::before, .divider::after {
+            content: "";
+            flex: 1;
+            border-bottom: 1px dashed #444;
+            margin: 0 10px;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 40px 0;
+            font-size: 1.1rem;
+        }
+
+        /* 底部固定狀態列 */
+        .status-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(25, 25, 25, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid #444;
+            padding: 15px 20px;
+            padding-bottom: calc(15px + env(safe-area-inset-bottom));
+            z-index: 100;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .status-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 1.05rem;
+        }
+
+        .status-label {
+            font-weight: 800;
+            color: var(--accent);
+            white-space: nowrap;
+            width: 90px;
+            flex-shrink: 0;
+            padding-top: 2px;
+        }
+
+        .status-content {
+            color: var(--text-main);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .status-content .badge {
+            margin: 0; /* 清除原本的 margin，在狀態列更好看 */
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>動態場控儀表板</h1>
+        
+        <!-- 新增：開啟通知的控制列 -->
+        <div class="notification-bar">
+            <span style="font-size: 0.95rem;">時間點推播提醒</span>
+            <button id="btnNotify" class="notify-btn">🔔 點我授權開啟</button>
+        </div>
+
+        <div class="controls">
+            <!-- 加上 min 與 max 屬性限制時間範圍 -->
+            <input type="time" id="timeSimulator" value="12:00" min="10:30" max="19:30">
+            <button id="btnNow">📍 設為現在</button>
+        </div>
+    </header>
+
+    <main>
+        <div class="dashboard" id="eventContainer">
+            <!-- 內容由 JavaScript 動態生成 -->
+        </div>
+    </main>
+
+    <!-- 新增：底部固定狀態列 -->
+    <div class="status-footer">
+        <div class="status-row">
+            <div class="status-label">🛌 休息中</div>
+            <div class="status-content" id="restingList">讀取中...</div>
+        </div>
+        <div class="status-row">
+            <div class="status-label">🏃 機動人員</div>
+            <div class="status-content" id="roverStatus">讀取中...</div>
+        </div>
+    </div>
+
+    <script>
+        // 完整的作息表資料
+        const eventsData = [
+            { time: '10:30', text: '票亭、驗票、入口：上班' },
+            { time: '11:00', text: '安一場控、安二場控、瑪莎多拉(1)、瑪莎多拉(2)：上班' },
+            { time: '11:20', text: '確認 A組演員 就位' },
+            { time: '11:30', text: '一坪海岸線(1)、一坪海岸線(2)、統治者的祝福(1)、統治者的祝福(2)：上班<br>票亭、驗票：開始自休' },
+            { time: '11:34', text: '入口：開始自休' },
+            { time: '11:50', text: '確認 戀愛都市 杜里亞斯 就位' },
+            { time: '12:00', text: '票亭、驗票：自休結束返回<br>安一場控、瑪莎多拉(1)：開始自休<br>機動人員：前往接替驗票輪休' },
+            { time: '12:04', text: '入口：自休結束返回' },
+            { time: '12:20', text: '確認 B組演員 就位' },
+            { time: '12:28', text: '安二場控、瑪莎多拉(2)：開始自休' },
+            { time: '12:30', text: '安一場控、瑪莎多拉(1)：自休結束返回<br>驗票：輪休結束返回<br>機動人員：前往接替安一場控輪休' },
+            { time: '12:55', text: '一坪海岸線(1)、一坪海岸線(2)：開始自休' },
+            { time: '12:58', text: '安二場控、瑪莎多拉(2)：自休結束返回' },
+            { time: '13:00', text: '安一場控：輪休結束返回<br>機動人員：前往接替瑪莎多拉(1)輪休' },
+            { time: '13:05', text: '統治者的祝福(1)：開始自休' },
+            { time: '13:25', text: '一坪海岸線(1)、一坪海岸線(2)：自休結束返回' },
+            { time: '13:30', text: '瑪莎多拉(1)：輪休結束返回' },
+            { time: '13:35', text: '統治者的祝福(1)：自休結束返回<br>機動人員：前往接替統治者的祝福(1)輪休' },
+            { time: '14:05', text: '統治者的祝福(1)：輪休結束返回<br>統治者的祝福(2)：進入大休' },
+            { time: '15:05', text: '統治者的祝福(2)：大休結束<br>機動人員：前往接替入口輪休' },
+            { time: '15:35', text: '入口：輪休結束返回<br>機動人員：前往接替票亭輪休' },
+            { time: '16:05', text: '票亭：輪休結束返回<br>機動人員：前往接替安二場控輪休' },
+            { time: '16:35', text: '安二場控：輪休結束返回<br>機動人員：前往接替瑪莎多拉(2)輪休' },
+            { time: '17:05', text: '瑪莎多拉(2)：輪休結束返回<br>機動人員：前往接替一坪海岸線(1)輪休' },
+            { time: '17:35', text: '一坪海岸線(1)：輪休結束返回<br>機動人員：前往接替一坪海岸線(2)輪休' },
+            { time: '18:05', text: '一坪海岸線(2)：輪休結束返回' },
+            { time: '18:30', text: '票亭、驗票、入口：下班' },
+            { time: '19:00', text: '安一場控、安二場控、瑪莎多拉(1)、瑪莎多拉(2)：下班' },
+            { time: '19:30', text: '一坪海岸線(1)、一坪海岸線(2)、統治者的祝福(1)、統治者的祝福(2)：下班' }
+        ];
+
+        const timeInput = document.getElementById('timeSimulator');
+        const eventContainer = document.getElementById('eventContainer');
+        const btnNow = document.getElementById('btnNow');
+
+        // 新增：定義所有休息時段與機動人員排班
+        const breaksData = [
+            { role: '票亭', start: '11:30', end: '12:00', type: '自休' },
+            { role: '驗票', start: '11:30', end: '12:00', type: '自休' },
+            { role: '入口', start: '11:34', end: '12:04', type: '自休' },
+            { role: '安一場控', start: '12:00', end: '12:30', type: '自休' },
+            { role: '瑪莎多拉(1)', start: '12:00', end: '12:30', type: '自休' },
+            { role: '安二場控', start: '12:28', end: '12:58', type: '自休' },
+            { role: '瑪莎多拉(2)', start: '12:28', end: '12:58', type: '自休' },
+            { role: '一坪海岸線(1)', start: '12:55', end: '13:25', type: '自休' },
+            { role: '一坪海岸線(2)', start: '12:55', end: '13:25', type: '自休' },
+            { role: '統治者的祝福(1)', start: '13:05', end: '13:35', type: '自休' },
+            { role: '驗票', start: '12:00', end: '12:30', type: '輪休' },
+            { role: '安一場控', start: '12:30', end: '13:00', type: '輪休' },
+            { role: '瑪莎多拉(1)', start: '13:00', end: '13:30', type: '輪休' },
+            { role: '統治者的祝福(1)', start: '13:35', end: '14:05', type: '輪休' },
+            { role: '統治者的祝福(2)', start: '14:05', end: '15:05', type: '大休' },
+            { role: '入口', start: '15:05', end: '15:35', type: '輪休' },
+            { role: '票亭', start: '15:35', end: '16:05', type: '輪休' },
+            { role: '安二場控', start: '16:05', end: '16:35', type: '輪休' },
+            { role: '瑪莎多拉(2)', start: '16:35', end: '17:05', type: '輪休' },
+            { role: '一坪海岸線(1)', start: '17:05', end: '17:35', type: '輪休' },
+            { role: '一坪海岸線(2)', start: '17:35', end: '18:05', type: '輪休' }
+        ];
+
+        const roverData = [
+            { target: '驗票', start: '12:00', end: '12:30' },
+            { target: '安一場控', start: '12:30', end: '13:00' },
+            { target: '瑪莎多拉(1)', start: '13:00', end: '13:30' },
+            { target: '統治者的祝福(1)', start: '13:35', end: '14:05' },
+            { target: '大休', start: '14:05', end: '15:05' },
+            { target: '入口', start: '15:05', end: '15:35' },
+            { target: '票亭', start: '15:35', end: '16:05' },
+            { target: '安二場控', start: '16:05', end: '16:35' },
+            { target: '瑪莎多拉(2)', start: '16:35', end: '17:05' },
+            { target: '一坪海岸線(1)', start: '17:05', end: '17:35' },
+            { target: '一坪海岸線(2)', start: '17:35', end: '18:05' }
+        ];
+
+        const btnNotify = document.getElementById('btnNotify');
+        let notificationEnabled = false;
+        let lastNotifiedTime = null; // 紀錄最後一次通知的時間，避免同一分鐘內重複響
+
+        // 檢查瀏覽器是否支援通知
+        if (!("Notification" in window)) {
+            btnNotify.style.display = 'none';
+        } else {
+            // 檢查目前的授權狀態
+            if (Notification.permission === "granted") {
+                enableNotifications(false); // 初始先不跳提示，只改按鈕狀態
+            }
+        }
+
+        btnNotify.addEventListener('click', () => {
+            if (notificationEnabled) {
+                // 關閉通知
+                notificationEnabled = false;
+                btnNotify.classList.remove('active');
+                btnNotify.textContent = '🔔 點我開啟';
+            } else {
+                // 請求授權並開啟通知
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        enableNotifications(true);
+                    } else {
+                        alert("您已拒絕通知，請至瀏覽器設定中開啟。");
+                    }
+                });
+            }
+        });
+
+        function enableNotifications(showToast) {
+            notificationEnabled = true;
+            btnNotify.classList.add('active');
+            btnNotify.textContent = '✅ 通知已開啟';
+            if (showToast) {
+                new Notification("測試通知", { 
+                    body: "場控儀表板已成功開啟通知功能！",
+                    icon: "https://placehold.co/192x192/bb86fc/000000?text=Check" // 給予一個臨時 icon
+                });
+            }
+        }
+
+        // 建立一個每秒執行的背景時鐘
+        setInterval(() => {
+            // 如果沒開通知，或者目前時間不是「現在」，就不檢查
+            // 這裡我們強制只有當上面輸入框的時間等於現實時間時，才跳通知，避免亂調時間時狂跳
+            
+            if (!notificationEnabled) return;
+
+            const now = new Date();
+            const currentHours = String(now.getHours()).padStart(2, '0');
+            const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+            const actualTime = `${currentHours}:${currentMinutes}`;
+
+            // 如果儀表板時間跟現實時間不同步，不跳通知 (代表督導在預覽其他時間)
+            if (timeInput.value !== actualTime) return;
+
+            // 確保同一分鐘只會通知一次
+            if (actualTime === lastNotifiedTime) return;
+
+            // 尋找當下這分鐘，是否有事件發生
+            const eventNow = eventsData.find(e => e.time === actualTime);
+            
+            if (eventNow) {
+                // 找到事件！發送系統通知
+                
+                // 把 HTML 標籤 (例如 <br> 或 <span>) 過濾掉，變成純文字
+                let plainText = eventNow.text.replace(/<br>/g, '\n').replace(/<[^>]*>?/gm, '');
+
+                new Notification(`時間到了：${actualTime}`, {
+                    body: plainText,
+                    icon: "https://placehold.co/192x192/03dac6/000000?text=TIME"
+                });
+                
+                // 紀錄已經通知過，避免這分鐘內重複跳
+                lastNotifiedTime = actualTime;
+            }
+
+        }, 1000); // 每 1 秒檢查一次
+
+        // 幫文字上標籤顏色的函式
+        function colorizeRoles(text) {
+            let res = text;
+            const rovers = ['機動人員', '統治者的祝福\\(2\\)'];
+            const fronts = ['票亭', '驗票', '入口'];
+            const controls = ['安一場控', '安二場控'];
+            const stations = ['瑪莎多拉\\(1\\)', '瑪莎多拉\\(2\\)', '一坪海岸線\\(1\\)', '一坪海岸線\\(2\\)', '統治者的祝福\\(1\\)'];
+
+            rovers.forEach(r => res = res.replace(new RegExp(r, 'g'), `<span class="badge badge-rover">$&</span>`));
+            fronts.forEach(r => res = res.replace(new RegExp(r, 'g'), `<span class="badge badge-front">$&</span>`));
+            controls.forEach(r => res = res.replace(new RegExp(r, 'g'), `<span class="badge badge-control">$&</span>`));
+            stations.forEach(r => res = res.replace(new RegExp(r, 'g'), `<span class="badge badge-station">$&</span>`));
+            
+            return res;
+        }
+
+        // 渲染儀表板的函式
+        function renderDashboard() {
+            const currentTime = timeInput.value;
+            eventContainer.innerHTML = '';
+
+            // --- 更新底部即時狀態列 ---
+            const restingList = document.getElementById('restingList');
+            const roverStatus = document.getElementById('roverStatus');
+
+            // 1. 尋找當前休息中的人 (確保時間落在區間內)
+            const activeBreaks = breaksData.filter(b => currentTime >= b.start && currentTime < b.end);
+            if (activeBreaks.length > 0) {
+                const breakHtml = activeBreaks.map(b => `<div style="display:flex; align-items:center; gap:4px; margin-bottom:4px;">${colorizeRoles(b.role)}<span style="font-size:0.8rem; color:#aaa;">(${b.type})</span></div>`).join('');
+                restingList.innerHTML = breakHtml;
+            } else {
+                restingList.innerHTML = '<span style="color:#777;">目前無人休息</span>';
+            }
+
+            // 2. 尋找機動人員當下狀態
+            const activeRover = roverData.find(r => currentTime >= r.start && currentTime < r.end);
+            if (activeRover) {
+                if (activeRover.target === '大休') {
+                    roverStatus.innerHTML = '<span class="badge badge-rover" style="background-color:#555; color:#ccc;">💤 進入大休</span>';
+                } else {
+                    roverStatus.innerHTML = `接替 ${colorizeRoles(activeRover.target)}`;
+                }
+            } else {
+                if (currentTime < '11:30' || currentTime >= '19:30') {
+                    roverStatus.innerHTML = '<span style="color:#777;">尚未執勤 / 已下班</span>';
+                } else {
+                    // 若無特定接替對象，則視為在原本的關卡崗位
+                    roverStatus.innerHTML = `${colorizeRoles('統治者的祝福(2)')} <span style="font-size:0.8rem; color:#aaa;">(原崗位)</span>`;
+                }
+            }
+            // ------------------------
+
+            // 尋找未來第一個發生的事件索引
+            let nextIndex = eventsData.findIndex(e => e.time >= currentTime);
+            if (nextIndex === -1) nextIndex = eventsData.length; // 如果都已經發生完了
+
+            // 擷取過去剛發生的 2 件事
+            const pastEvents = eventsData.slice(0, nextIndex).slice(-2);
+            // 擷取未來即將發生的 2 件事
+            const futureEvents = eventsData.slice(nextIndex, nextIndex + 2);
+
+            // 渲染過去事件
+            pastEvents.forEach(e => {
+                const html = `
+                    <div class="event-card past">
+                        <div class="card-header">
+                            <span class="time-col">${e.time}</span>
+                            <span class="status-badge">⚠️ 待確認 (CHECK)</span>
+                        </div>
+                        <div class="desc-col">${colorizeRoles(e.text)}</div>
+                    </div>`;
+                eventContainer.insertAdjacentHTML('beforeend', html);
+            });
+
+            if(pastEvents.length > 0 && futureEvents.length > 0) {
+                eventContainer.insertAdjacentHTML('beforeend', `<div class="divider">當前時間 ${currentTime}</div>`);
+            }
+
+            // 渲染未來事件
+            futureEvents.forEach((e, index) => {
+                const isNext = index === 0; // 最接近的下一個事件加上發光特效
+                const statusText = isNext ? '即將到來 (NEXT)' : '稍後 (FUTURE)';
+                const html = `
+                    <div class="event-card future ${isNext ? 'next' : ''}">
+                        <div class="card-header">
+                            <span class="time-col">${e.time}</span>
+                            <span class="status-badge">${statusText}</span>
+                        </div>
+                        <div class="desc-col">${colorizeRoles(e.text)}</div>
+                    </div>`;
+                eventContainer.insertAdjacentHTML('beforeend', html);
+            });
+            
+            if(pastEvents.length === 0 && futureEvents.length === 0) {
+                 eventContainer.innerHTML = '<div class="empty-state">查無行程資料</div>';
+            }
+        }
+
+        // 綁定事件
+        timeInput.addEventListener('input', renderDashboard);
+        
+        btnNow.addEventListener('click', () => {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            timeInput.value = `${hours}:${minutes}`;
+            renderDashboard();
+        });
+
+        // 網頁載入時自動設定為現在時間並渲染
+        window.onload = () => {
+            btnNow.click(); 
+        };
+
+    </script>
+</body>
+</html>
