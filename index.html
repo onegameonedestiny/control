@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 加入主畫面設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>動態場控儀表板</title>
@@ -28,6 +29,7 @@
             min-height: 100vh;
         }
 
+        /* */
         /* --- 頂部固定控制列 --- */
         header {
             position: sticky;
@@ -110,7 +112,19 @@
             box-shadow: 0 0 8px rgba(187, 134, 252, 0.5);
             flex-shrink: 0;
         }
+        
+        #btnRoster {
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
 
+        /* */
         /* --- 儀表板主要內容 --- */
         .dashboard {
             width: 100%;
@@ -217,6 +231,7 @@
         .badge-station { background-color: #69f0ae; }
         .badge-actor { background-color: #e1bee7; }
 
+        /* */
         /* --- 底部狀態列 --- */
         .bottom-status-bar {
             position: fixed;
@@ -292,6 +307,9 @@
             border: 1px solid #444;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
             position: relative;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
         }
         .close-btn {
             position: absolute;
@@ -319,6 +337,7 @@
         .rest-label { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px; }
         .rest-time { font-size: 1.4rem; font-weight: bold; color: white; }
 
+        /* */
         /* --- 網頁內建通知 (Toast) --- */
         #toastContainer {
             position: fixed;
@@ -349,11 +368,36 @@
             transform: translateY(0);
             opacity: 1;
         }
+        
+        /* 班表公告區塊專用 */
+        #rosterContent {
+            white-space: pre-wrap; 
+            font-family: monospace; 
+            font-size: 1rem;
+            line-height: 1.4;
+            color: #ccc;
+            overflow-y: auto;
+            flex-grow: 1;
+            margin-bottom: 15px;
+            padding-right: 10px;
+        }
+        .copy-btn {
+            background-color: var(--accent);
+            color: #000;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+        }
 
     </style>
 </head>
 <body>
     
+    <!-- -->
     <!-- 網頁內建通知容器 -->
     <div id="toastContainer"></div>
 
@@ -363,8 +407,9 @@
             <button id="btnNotify" class="notify-btn" title="開啟推播通知">🔕</button>
         </div>
         <div class="controls">
+            <button id="btnRoster">📋 班表公告</button>
             <select id="roleSearch">
-                <option value="" disabled selected>查休息時間</option>
+                <option value="" disabled selected>休時查詢</option>
                 <option value="票亭">票亭</option>
                 <option value="驗票">驗票</option>
                 <option value="入口">入口</option>
@@ -400,9 +445,9 @@
         </div>
     </div>
 
-    <!-- 自訂彈跳視窗 -->
+    <!-- 休息時間查詢 彈跳視窗 -->
     <div id="restModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-height: none;">
             <span class="close-btn" id="closeModal">&times;</span>
             <h2 class="modal-title" id="modalRoleName">崗位名稱</h2>
             <div id="modalBody">
@@ -410,8 +455,19 @@
             </div>
         </div>
     </div>
+    
+    <!-- 當日班表公告 彈跳視窗 -->
+    <div id="rosterModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeRosterModal">&times;</span>
+            <h2 class="modal-title">當日班表公告</h2>
+            <div id="rosterContent">載入中...</div>
+            <button class="copy-btn" id="btnCopyRoster">📋 一鍵複製公告</button>
+        </div>
+    </div>
 
     <script>
+        /* */
         const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTCEzSFH4YvcE0I5WUlkSr7Hfn5-tVre5p5-GKWlblVYIIQkpHSFX6vc0Lc_jisVfGfnInry6-l789V/pub?output=csv';
         let roleStaffMap = {};
 
@@ -461,6 +517,7 @@
             { role: '統治者的祝福(2)', self: ['14:05', '15:05'], rover: null, isRover: true }
         ];
 
+        /* */
         const eventContainer = document.getElementById('eventContainer');
         const btnNow = document.getElementById('btnNow');
         const btnNotify = document.getElementById('btnNotify');
@@ -474,6 +531,15 @@
         const modalRoleName = document.getElementById('modalRoleName');
         const modalBody = document.getElementById('modalBody');
 
+        // 公告 Modal Elements
+        const btnRoster = document.getElementById('btnRoster');
+        const rosterModal = document.getElementById('rosterModal');
+        const closeRosterModal = document.getElementById('closeRosterModal');
+        const rosterContent = document.getElementById('rosterContent');
+        const btnCopyRoster = document.getElementById('btnCopyRoster');
+        let rawRosterText = "班表載入中或發生錯誤...";
+
+        /* */
         // --- 網頁內建音效與通知系統 ---
         let notificationEnabled = false;
         let lastNotifiedTime = null;
@@ -564,6 +630,7 @@
             }
         }
 
+        /* */
         function isTimeInRange(t, start, end) {
             if (!t || !start || !end) return false;
             return t >= start && t < end;
@@ -621,6 +688,7 @@
             });
         }
 
+        /* */
         // 第二步：每秒更新卡片顏色、焦點，以及底部狀態
         function updateTimelineState() {
             const now = new Date();
@@ -712,6 +780,7 @@
             roverStatusEl.innerHTML = roverHtml;
         }
 
+        /* */
         // 自動滑動到當下焦點事件
         function scrollToFocus() {
             // 優先找「即將到來」，找不到再找「待確認」
@@ -746,13 +815,13 @@
                 } else {
                     html += `
                     <div class="rest-block">
-                        <div class="rest-label">自休時間 (不離崗)</div>
+                        <div class="rest-label">自休時間 (時間到就去)</div>
                         <div class="rest-time">${sch.self[0]} - ${sch.self[1]}</div>
                     </div>`;
                     if(sch.rover) {
                         html += `
                         <div class="rest-block">
-                            <div class="rest-label">機動輪休時間 (可離崗)</div>
+                            <div class="rest-label">機動輪休時間 (等輪休到才能走)</div>
                             <div class="rest-time" style="color:#03dac6">${sch.rover[0]} - ${sch.rover[1]}</div>
                         </div>`;
                     }
@@ -772,8 +841,36 @@
         closeModal.addEventListener('click', () => restModal.classList.remove('show'));
         window.addEventListener('click', (e) => {
             if (e.target === restModal) restModal.classList.remove('show');
+            if (e.target === rosterModal) rosterModal.classList.remove('show');
         });
 
+        // --- 班表公告視窗與複製功能 ---
+        btnRoster.addEventListener('click', () => {
+            rosterContent.innerText = rawRosterText;
+            rosterModal.classList.add('show');
+        });
+        
+        closeRosterModal.addEventListener('click', () => rosterModal.classList.remove('show'));
+
+        btnCopyRoster.addEventListener('click', () => {
+            // 使用傳統 textarea 方式，確保手機與非 HTTPS 環境皆能成功複製
+            const textArea = document.createElement("textarea");
+            textArea.value = rawRosterText;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast("✅ 複製成功", "今日班表已成功複製到剪貼簿！可以去貼上了！");
+            } catch (err) {
+                showToast("❌ 複製失敗", "您的瀏覽器阻擋了自動複製，請手動長按文字複製。");
+            }
+            document.body.removeChild(textArea);
+            
+            // 複製成功後稍微延遲並自動關閉視窗，體驗更順暢
+            setTimeout(() => rosterModal.classList.remove('show'), 800);
+        });
+
+        /* */
         function initApp() {
             // 1. 先畫出所有卡片 (防呆，確保沒網路也有畫面)
             generateAllEventsDOM();
@@ -789,6 +886,13 @@
             fetch(GOOGLE_SHEET_CSV_URL)
                 .then(res => res.ok ? res.text() : Promise.reject('HTTP ' + res.status))
                 .then(csvText => {
+                    // 儲存乾淨的原始 CSV 文字供公告複製使用 (去除外層引號)
+                    let cleanText = csvText.trim();
+                    if (cleanText.startsWith('"') && cleanText.endsWith('"')) {
+                        cleanText = cleanText.substring(1, cleanText.length - 1);
+                    }
+                    rawRosterText = cleanText.replace(/""/g, '"');
+
                     const targetRoles = [
                         '票亭', '驗票', '入口', '安一場控', '安二場控',
                         '瑪莎多拉1', '瑪莎多拉2', '一坪海岸線1', '一坪海岸線2',
